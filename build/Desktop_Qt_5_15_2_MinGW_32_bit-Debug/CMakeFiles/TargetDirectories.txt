@@ -1,0 +1,8 @@
+F:/git/GitHub/winDeployQtGUI/build/Desktop_Qt_5_15_2_MinGW_32_bit-Debug/CMakeFiles/winDeployQtGUI.dir
+F:/git/GitHub/winDeployQtGUI/build/Desktop_Qt_5_15_2_MinGW_32_bit-Debug/CMakeFiles/edit_cache.dir
+F:/git/GitHub/winDeployQtGUI/build/Desktop_Qt_5_15_2_MinGW_32_bit-Debug/CMakeFiles/rebuild_cache.dir
+F:/git/GitHub/winDeployQtGUI/build/Desktop_Qt_5_15_2_MinGW_32_bit-Debug/CMakeFiles/list_install_components.dir
+F:/git/GitHub/winDeployQtGUI/build/Desktop_Qt_5_15_2_MinGW_32_bit-Debug/CMakeFiles/install.dir
+F:/git/GitHub/winDeployQtGUI/build/Desktop_Qt_5_15_2_MinGW_32_bit-Debug/CMakeFiles/install/local.dir
+F:/git/GitHub/winDeployQtGUI/build/Desktop_Qt_5_15_2_MinGW_32_bit-Debug/CMakeFiles/install/strip.dir
+F:/git/GitHub/winDeployQtGUI/build/Desktop_Qt_5_15_2_MinGW_32_bit-Debug/CMakeFiles/winDeployQtGUI_autogen.dir
