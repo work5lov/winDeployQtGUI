@@ -8,27 +8,13 @@ int main(int argc, char *argv[])
 {
     qRegisterMetaType<QMap<QString, QString>>("QMap<QString, QString>");
 
-    // QString shortcutPath = "C:/Users/Vlad/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Qt/6.8.0/LLVM MinGW 17.0.6 (64-bit)/Qt 6.8.0 (llvm-mingw 17.0.6 64-bit).lnk";
-
-    // QProcess process;
-    // // Используем "start" для открытия .lnk файла, Windows обрабатывает ярлык и запускает связанный файл
-    // if (process.startDetached("cmd.exe", {"/c", "start", shortcutPath})) {
-    //     qDebug() << "Console launched successfully.";
-    // } else {
-    //     qDebug() << "Failed to launch console.";
-    // }
-
     // Укажите путь для сканирования
     QString directory = R"(C:\Users\Vlad\AppData\Roaming\Microsoft\Windows\Start Menu\Programs)";
     QtFolderScanner scanner(directory);
 
-    // Запуск сканирования
-    // scanner.scan();
-
     scanner.scanAllDrives();
 
     // Получение и вывод сохранённых данных
-    // const QMap<QString, QString>& filesMap = scanner.getDirMap();
     const QMap<QString,QVector<QString>> filesMap = scanner.getDirMap();
     qDebug() << "\nСохранённые файлы:";
     for (auto it = filesMap.begin(); it != filesMap.end(); ++it) {
