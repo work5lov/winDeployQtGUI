@@ -13,6 +13,8 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Quick)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Quick)
 
 set(PROJECT_SOURCES
+        QtFolderScanner.h QtFolderScanner.cpp
+        DeploymentManager.h DeploymentManager.cpp
         main.cpp
         qml.qrc
 )
@@ -35,9 +37,7 @@ else()
 #    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
     else()
         add_executable(winDeployQtGUI
-          ${PROJECT_SOURCES}
-          QtVersionManager.h QtVersionManager.cpp
-          QtFolderScanner.h QtFolderScanner.cpp
+          ${PROJECT_SOURCES}          
         )
     endif()
 endif()

@@ -1,7 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QProcess>
-#include "QtVersionManager.h"
+#include "DeploymentManager.h"
 #include "QtFolderScanner.h"
 
 int main(int argc, char *argv[])
@@ -10,16 +10,9 @@ int main(int argc, char *argv[])
 
     // Укажите путь для сканирования
     QString directory = R"(C:\Users\Vlad\AppData\Roaming\Microsoft\Windows\Start Menu\Programs)";
-    QtFolderScanner scanner(directory);
-
-    scanner.scanAllDrives();
-
-    // Получение и вывод сохранённых данных
-    const QMap<QString,QVector<QString>> filesMap = scanner.getDirMap();
-    qDebug() << "\nСохранённые файлы:";
-    for (auto it = filesMap.begin(); it != filesMap.end(); ++it) {
-        qDebug() << "Файл:" << it.key() << "Путь:" << it.value();
-    }
+    QtFolderScanner scanner;
+    scanner.scanDrives();
+    qDebug() << "Ручная проверка версий Qt:" << scanner.getDirMap();
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
@@ -28,7 +21,10 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));
-    qmlRegisterType<QtVersionManager>("com.myapp", 1, 0, "QtVersionManager");
+
+    qmlRegisterType<DeploymentManager>("Deployment", 1, 0, "DeploymentManager");
+    qmlRegisterType<QtFolderScanner>("Scanner", 1, 0, "QtFolderScanner");
+
     QObject::connect(
         &engine,
         &QQmlApplicationEngine::objectCreated,
@@ -38,7 +34,7 @@ int main(int argc, char *argv[])
                 QCoreApplication::exit(-1);
         },
         Qt::QueuedConnection);
-    // engine.load(url);
+    engine.load(url);
 
     return app.exec();
 }

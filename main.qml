@@ -1,86 +1,128 @@
+// main.qml
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Dialogs 1.3
-import com.myapp 1.0
+import Deployment 1.0
+import Scanner 1.0
 
 ApplicationWindow {
+    width: 640
+    height: 480
     visible: true
-    width: 800
-    height: 600
-    title: "Qt Deployment Tool"
 
-    QtObject {
-        id: backend
-        property var qtManager: QtVersionManager {}
+    QtFolderScanner { id: scanner }
+    DeploymentManager { id: deployManager }
+
+    // Объявляем диалоги отдельно
+    FileDialog {
+        id: exeFileDialog
+        selectExisting: true
+        nameFilters: ["Исполняемые файлы (*.exe)"]
+        onAccepted: exePath.text = fileUrl.toString().replace("file:///", "")
+    }
+
+    FileDialog {
+        id: qmlFolderDialog
+        selectFolder: true // Разрешаем выбор папок
+        nameFilters: []
+        onAccepted: {
+            if (!folder.isEmpty) {
+                qmlDir.text = folder.toString().replace("file:///", "")
+            }
+        }
     }
 
     Column {
-        spacing: 20
-        // padding: 10
+        anchors.centerIn: parent
+        spacing: 10
 
         // Выбор исполняемого файла
-        FileDialog {
-            id: exeFileDialog
-            nameFilters: ["Executables (*.exe)"]
-        }
-
-        Button {
-            text: "Выбрать исполняемый файл"
-            onClicked: exeFileDialog.open()
-        }
-
-        Label {
-            text: exeFileDialog.fileUrl
-        }
-
-        // Рекомендуемая версия Qt
-        TextField {
-            id: recommendedQtVersion
-            text: backend.recommendQtVersion(exeFileDialog.fileUrl)
-            placeholderText: "Рекомендуемая версия Qt"
+        Row {
+            spacing: 5
+            TextField { id: exePath; placeholderText: "Путь к .exe" }
+            Button {
+                text: "Выбрать"
+                onClicked: exeFileDialog.open() // Правильный вызов
+            }
         }
 
         // Выбор версии Qt
         ComboBox {
-            id: qtVersionSelector
-            model: backend.qtManager.qtVersions.keys()
-        }
+            id: qtVersionCombo
+            model: ListModel { id: qtVersionsModel }
+            textRole: "version"
 
-        // Режим QML
-        CheckBox {
-            id: qmlMode
-            text: "Включить режим QML"
-        }
-
-        FileDialog {
-            id: folderDialog
-            title: "Выберите папку"
-            selectFolder: true
-            folder: shortcuts.home
-            onAccepted: {
-                console.log("Выбранная папка:", folderDialog.folder)
+            delegate: ItemDelegate {
+                width: parent.width
+                text: model.version
             }
-            onRejected: {
-                console.log("Выбор папки отменен")
+
+            Component.onCompleted: {
+                scanner.scanSystem()
+                const versions = scanner.getQtVersions()
+                versions.forEach(version => {
+                    qtVersionsModel.append({ version: version })
+                })
+                console.log("Загружены версии Qt:", versions)
+            }
+
+            onCurrentIndexChanged: {
+                if (currentIndex >= 0) {
+                    deployManager.setQtVersion(currentText)
+                }
             }
         }
 
+        // Комбобокс выбора компилятора
+        ComboBox {
+            width:parent.width
+            id: compilerCombo
+            model: scanner.getCompilers(qtVersionCombo.currentText) || []
 
-        // FolderDialog {
-        //     id: qmlFolderDialog
-        // }
+            onCurrentTextChanged: {
+                const compilerPath = currentText
+                deployManager.setCompilerPath(compilerPath)
 
-        Button {
-            visible: qmlMode.checked
-            text: "Выбрать папку с QML"
-            onClicked: folderDialog.open()
+                // Получаем путь к windeployqt
+                const winDeployPath = scanner.getWinDeployQtPath(
+                    qtVersionCombo.currentText,
+                    compilerPath
+                )
+                console.log("WinDeployQt path:", winDeployPath)
+            }
         }
 
-        // Кнопка запуска команды windeployqt
+        // Выбор QML-директории
+        Row {
+            spacing: 5
+            TextField { id: qmlDir; placeholderText: "QML-директория" }
+            Button {
+                text: "Выбрать"
+                onClicked: qmlFolderDialog.open() // Правильный вызов
+            }
+        }
+
+        // Кнопка запуска
         Button {
             text: "Запустить windeployqt"
+            enabled: !deployManager.isRunning &&
+                        !exePath.text.isEmpty() &&
+                        !qtVersionsModel.isEmpty()
             onClicked: {
-                // TODO: реализовать запуск команды
+                deployManager.setExecutablePath(exePath.text)
+                deployManager.setQmlDirectory(qmlDir.text)
+                deployManager.startDeployment()
+            }
+        }
+
+        // Лог
+        TextArea {
+            width: parent.width
+            height: 200
+            readOnly: true
+            Connections {
+                target: deployManager
+                function onOutputReceived(msg) { append(msg) }
             }
         }
     }
