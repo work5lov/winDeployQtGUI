@@ -1,6 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QProcess>
+#include <QSettings>
 #include "DeploymentManager.h"
 #include "QtFolderScanner.h"
 
@@ -8,16 +9,18 @@ int main(int argc, char *argv[])
 {
     qRegisterMetaType<QMap<QString, QString>>("QMap<QString, QString>");
 
-    // Укажите путь для сканирования
-    QString directory = R"(C:\Users\Vlad\AppData\Roaming\Microsoft\Windows\Start Menu\Programs)";
-    QtFolderScanner scanner;
-    scanner.scanDrives();
-    qDebug() << "Ручная проверка версий Qt:" << scanner.getDirMap();
-
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
     QGuiApplication app(argc, argv);
+
+    // Установите название организации и приложения
+    QCoreApplication::setOrganizationName("OpenSoft");
+    QCoreApplication::setApplicationName("windeployqtGUI");
+
+    // Инициализация QSettings
+    QSettings settings;
+    // qDebug() << "Settings path:" << settings.fileName();
 
     QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));

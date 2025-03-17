@@ -19,8 +19,8 @@ void QtFolderScanner::scanSystem() {
 
     qDebug() << "Начинаю сканирование системы...";
 
-    scanRegistry();
-    scanDefaultPaths();
+    // scanRegistry();
+    // scanDefaultPaths();
     scanDrives();
 
     qDebug() << "Найденные версии Qt:" << dirMap.keys();
@@ -78,7 +78,7 @@ void QtFolderScanner::scanDrives() {
         for (const QString& folder : folders) {
             if (folder.contains("Qt", Qt::CaseInsensitive)) {
                 QString fullPath = driveDir.absoluteFilePath(folder);
-                qDebug() << "Found Qt folder in drive:" << fullPath;
+                // qDebug() << "Found Qt folder in drive:" << fullPath;
                 findQtVersionsAllDrives(fullPath);
             }
         }
@@ -158,9 +158,6 @@ QStringList QtFolderScanner::getCompilers(const QString &version) const
             result.append(parts.last());
         }
     }
-
-    // Выводим результат
-    qDebug() << "Result:" << result;
     return result;
 }
 
@@ -180,7 +177,6 @@ QString QtFolderScanner::getWinDeployQtPath(const QString &version, const QStrin
     QDir compilerDir(path);
     if (compilerDir.cd("bin")) {
         QString path = compilerDir.filePath("windeployqt.exe");
-        qDebug() << path;
         return QFile::exists(path) ? path : QString();
     }
     return QString();

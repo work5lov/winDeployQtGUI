@@ -34,6 +34,7 @@ ApplicationWindow {
 
     Column {
         anchors.centerIn: parent
+        // width: parent.width
         spacing: 10
 
         // Выбор исполняемого файла
@@ -63,12 +64,14 @@ ApplicationWindow {
                 versions.forEach(version => {
                     qtVersionsModel.append({ version: version })
                 })
-                console.log("Загружены версии Qt:", versions)
+                // console.log("Загружены версии Qt:", versions)
             }
 
             onCurrentIndexChanged: {
                 if (currentIndex >= 0) {
-                    deployManager.setQtVersion(currentText)
+                    var selectedVersion = qtVersionsModel.get(currentIndex).version
+                    deployManager.setQtVersion(selectedVersion)
+                    // console.log("Выбранная версия Qt:", selectedVersion)
                 }
             }
         }
@@ -81,14 +84,18 @@ ApplicationWindow {
 
             onCurrentTextChanged: {
                 const compilerPath = currentText
-                deployManager.setCompilerPath(compilerPath)
+
 
                 // Получаем путь к windeployqt
                 const winDeployPath = scanner.getWinDeployQtPath(
                     qtVersionCombo.currentText,
                     compilerPath
                 )
-                console.log("WinDeployQt path:", winDeployPath)
+
+                var modifiedString = winDeployPath.split("/").join("\\");
+
+                deployManager.setCompilerPath(modifiedString)
+                // console.log("WinDeployQt path:", winDeployPath)
             }
         }
 
@@ -105,9 +112,7 @@ ApplicationWindow {
         // Кнопка запуска
         Button {
             text: "Запустить windeployqt"
-            enabled: !deployManager.isRunning &&
-                        !exePath.text.isEmpty() &&
-                        !qtVersionsModel.isEmpty()
+            enabled: !deployManager.isRunning
             onClicked: {
                 deployManager.setExecutablePath(exePath.text)
                 deployManager.setQmlDirectory(qmlDir.text)
@@ -116,13 +121,28 @@ ApplicationWindow {
         }
 
         // Лог
-        TextArea {
+        ScrollView {
+            id: logScrollView
             width: parent.width
             height: 200
-            readOnly: true
+            clip: true
+
+            Text {
+                id: logText
+                width: logScrollView.width
+                text: ""
+                wrapMode: Text.Wrap // Перенос текста по словам
+            }
+
             Connections {
                 target: deployManager
-                function onOutputReceived(msg) { append(msg) }
+                function onOutputReceived(msg) {
+                    logText.text += msg + "\n"; // Добавляем новую строку
+                    // Убедитесь, что flickableItem существует перед обращением к нему
+                    if (logScrollView.flickableItem) {
+                        logScrollView.flickableItem.contentY = logScrollView.flickableItem.contentHeight; // Прокручиваем вниз
+                    }
+                }
             }
         }
     }

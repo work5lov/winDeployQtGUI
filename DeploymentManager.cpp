@@ -28,14 +28,6 @@ void DeploymentManager::setQmlDirectory(const QString &path) {
 
 void DeploymentManager::setQtVersion(const QString &version) {
     qtVersion = version;
-    // Обновляем путь при смене версии
-    if (!compilerPath.isEmpty()) {
-        QtFolderScanner scanner;
-        QString winDeployPath = scanner.getWinDeployQtPath(version, compilerPath);
-        if (!winDeployPath.isEmpty()) {
-            qtBinPath = winDeployPath;
-        }
-    }
 }
 
 void DeploymentManager::startDeployment() {
@@ -67,8 +59,21 @@ void DeploymentManager::startDeployment() {
          << "--no-opengl-sw";
 
     process.setWorkingDirectory(QFileInfo(executablePath).absolutePath());
-    process.setProgram(qtBinPath + "/windeployqt.exe");
+    process.setProgram(qtBinPath);
     process.setArguments(args);
+
+    // Подключение сигнала finished
+    connect(&process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+            this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
+        QString message;
+        if (exitStatus == QProcess::NormalExit) {
+            message = "Деплой успешно завершен. Код выхода: " + QString::number(exitCode);
+        } else {
+            message = "Деплой завершился с ошибкой. Код выхода: " + QString::number(exitCode);
+        }
+        emit outputReceived(message);
+        emit isRunningChanged();
+    });
 
     emit outputReceived("Запуск: " + process.program() + " " + args.join(' '));
     process.start();
@@ -77,14 +82,5 @@ void DeploymentManager::startDeployment() {
 
 void DeploymentManager::setCompilerPath(const QString &path)
 {
-    compilerPath = path;
-    qDebug() << compilerPath;
-    // Обновляем путь к windeployqt при смене компилятора
-    if (!compilerPath.isEmpty() && !qtVersion.isEmpty()) {
-        QtFolderScanner scanner;
-        QString winDeployPath = scanner.getWinDeployQtPath(qtVersion, compilerPath);
-        if (!winDeployPath.isEmpty()) {
-            qtBinPath = winDeployPath;
-        }
-    }
+    qtBinPath = path;
 }
