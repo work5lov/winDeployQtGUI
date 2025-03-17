@@ -10,65 +10,86 @@ ApplicationWindow {
     height: 480
     visible: true
 
+    title: "windeploy GUI"
+
     QtFolderScanner { id: scanner }
     DeploymentManager { id: deployManager }
 
     // Объявляем диалоги отдельно
-    FileDialog {
+    FileDialog
+    {
         id: exeFileDialog
         selectExisting: true
         nameFilters: ["Исполняемые файлы (*.exe)"]
         onAccepted: exePath.text = fileUrl.toString().replace("file:///", "")
     }
 
-    FileDialog {
+    FileDialog
+    {
         id: qmlFolderDialog
         selectFolder: true // Разрешаем выбор папок
         nameFilters: []
-        onAccepted: {
-            if (!folder.isEmpty) {
+        onAccepted:
+        {
+            if (!folder.isEmpty)
+            {
                 qmlDir.text = folder.toString().replace("file:///", "")
             }
         }
     }
 
-    Column {
-        anchors.centerIn: parent
-        // width: parent.width
+    Column
+    {
+        width: parent.width * 0.8
+        height:  parent.height
         spacing: 10
+
+        anchors.left: parent.left
+        anchors.leftMargin: 5
 
         // Выбор исполняемого файла
         Row {
             spacing: 5
-            TextField { id: exePath; placeholderText: "Путь к .exe" }
-            Button {
+            TextField
+            {
+                id: exePath;
+                width: parent.width * 0.8
+                placeholderText: "Путь к .exe"
+            }
+            Button
+            {
                 text: "Выбрать"
                 onClicked: exeFileDialog.open() // Правильный вызов
             }
         }
 
         // Выбор версии Qt
-        ComboBox {
+        ComboBox
+        {
             id: qtVersionCombo
             model: ListModel { id: qtVersionsModel }
             textRole: "version"
 
-            delegate: ItemDelegate {
+            delegate: ItemDelegate
+            {
                 width: parent.width
                 text: model.version
             }
 
-            Component.onCompleted: {
+            Component.onCompleted:
+            {
                 scanner.scanSystem()
                 const versions = scanner.getQtVersions()
-                versions.forEach(version => {
+                versions.forEach(version =>{
                     qtVersionsModel.append({ version: version })
                 })
                 // console.log("Загружены версии Qt:", versions)
             }
 
-            onCurrentIndexChanged: {
-                if (currentIndex >= 0) {
+            onCurrentIndexChanged:
+            {
+                if (currentIndex >= 0)
+                {
                     var selectedVersion = qtVersionsModel.get(currentIndex).version
                     deployManager.setQtVersion(selectedVersion)
                     // console.log("Выбранная версия Qt:", selectedVersion)
@@ -78,11 +99,12 @@ ApplicationWindow {
 
         // Комбобокс выбора компилятора
         ComboBox {
-            width:parent.width
+            // width:parent.width
             id: compilerCombo
             model: scanner.getCompilers(qtVersionCombo.currentText) || []
 
-            onCurrentTextChanged: {
+            onCurrentTextChanged:
+            {
                 const compilerPath = currentText
 
 
@@ -95,14 +117,18 @@ ApplicationWindow {
                 var modifiedString = winDeployPath.split("/").join("\\");
 
                 deployManager.setCompilerPath(modifiedString)
-                // console.log("WinDeployQt path:", winDeployPath)
             }
         }
 
         // Выбор QML-директории
         Row {
             spacing: 5
-            TextField { id: qmlDir; placeholderText: "QML-директория" }
+            TextField
+            {
+                id: qmlDir;
+                width: parent.width * 0.8
+                placeholderText: "QML-директория"
+            }
             Button {
                 text: "Выбрать"
                 onClicked: qmlFolderDialog.open() // Правильный вызов
@@ -110,10 +136,12 @@ ApplicationWindow {
         }
 
         // Кнопка запуска
-        Button {
-            text: "Запустить windeployqt"
+        Button
+        {
+            text: "Запустить развертывание"
             enabled: !deployManager.isRunning
-            onClicked: {
+            onClicked:
+            {
                 deployManager.setExecutablePath(exePath.text)
                 deployManager.setQmlDirectory(qmlDir.text)
                 deployManager.startDeployment()
@@ -121,25 +149,30 @@ ApplicationWindow {
         }
 
         // Лог
-        ScrollView {
+        ScrollView
+        {
             id: logScrollView
             width: parent.width
             height: 200
             clip: true
 
-            Text {
+            Text
+            {
                 id: logText
                 width: logScrollView.width
                 text: ""
                 wrapMode: Text.Wrap // Перенос текста по словам
             }
 
-            Connections {
+            Connections
+            {
                 target: deployManager
-                function onOutputReceived(msg) {
+                function onOutputReceived(msg)
+                {
                     logText.text += msg + "\n"; // Добавляем новую строку
                     // Убедитесь, что flickableItem существует перед обращением к нему
-                    if (logScrollView.flickableItem) {
+                    if (logScrollView.flickableItem)
+                    {
                         logScrollView.flickableItem.contentY = logScrollView.flickableItem.contentHeight; // Прокручиваем вниз
                     }
                 }

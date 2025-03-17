@@ -20,7 +20,6 @@ int main(int argc, char *argv[])
 
     // Инициализация QSettings
     QSettings settings;
-    // qDebug() << "Settings path:" << settings.fileName();
 
     QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));
