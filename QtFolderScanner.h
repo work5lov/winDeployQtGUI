@@ -45,7 +45,6 @@ signals:
 
 private:
     void findQtVersionsAllDrives(const QString &qtFolderPath);
-    void findCompilerFiles(const QString& versionFolderPath, const QString& version);
     void findCompilerDirs(const QString &versionFolderPath, const QString &version);
     void loadSettings();
     void saveSettings() const;

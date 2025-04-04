@@ -183,31 +183,6 @@ void QtFolderScanner::findQtVersionsAllDrives(const QString &qtFolderPath)
     }
 }
 
-void QtFolderScanner::findCompilerFiles(const QString &versionFolderPath, const QString &version)
-{
-    QDir versionDir(versionFolderPath);
-    if (!versionDir.exists()) {
-        return;
-    }
-
-    // Перебор всех папок компиляторов внутри папки версии Qt
-    for (const QString& compilerFolder : versionDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot)) {
-        QString compilerFolderPath = versionDir.filePath(compilerFolder);
-        QDir compilerDir(compilerFolderPath);
-
-        // Поиск файлов, начинающихся с "Qt <версия>"
-        for (const QString& fileName : compilerDir.entryList(QDir::Files)) {
-            if (fileName.startsWith("Qt " + version)) {
-                QString fullPath = compilerDir.filePath(fileName);
-                // qDebug() << "    Найден файл:" << fileName << "по пути:" << fullPath;
-
-                // Сохранение файла и пути в QMap
-                filesMap.insert(fileName, fullPath);
-            }
-        }
-    }
-}
-
 void QtFolderScanner::findCompilerDirs(const QString &versionFolderPath, const QString &version)
 {
     QDir versionDir(versionFolderPath);
