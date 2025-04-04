@@ -8,7 +8,7 @@
 #include <QRegularExpression>
 #include <qdiriterator.h>
 
-QtFolderScanner::QtFolderScanner(QObject *parent) : QObject(parent) {}
+QtFolderScanner::QtFolderScanner(QObject *parent) : QObject(parent) {loadSettings();}
 
 void QtFolderScanner::scanSystem() {
     if (m_isScanning) return;
@@ -16,59 +16,28 @@ void QtFolderScanner::scanSystem() {
     m_isScanning = true;
     emit scanningChanged();
     qtInstallations.clear();
+    filesMap.clear(); // Карта для хранения файлов
+    dirMap.clear();
 
-    qDebug() << "Начинаю сканирование системы...";
-
-    // scanRegistry();
-    // scanDefaultPaths();
     scanDrives();
-
-    qDebug() << "Найденные версии Qt:" << dirMap.keys();
 
     m_isScanning = false;
     emit scanningChanged();
 }
 
-void QtFolderScanner::scanRegistry() {
-    QSettings settings(R"(HKEY_CURRENT_USER\Software\QtProject\QtCreator\Profiles)",
-                       QSettings::NativeFormat);
-    for (const QString &group : settings.childGroups()) {
-        settings.beginGroup(group);
-        QString path = settings.value("Path").toString().trimmed();
-        if (!path.isEmpty()) {
-            QDir dir(path);
-            if (dir.cd("bin") && isValidQtDirectory(dir.absolutePath())) {
-                QString version = dir.dirName().replace("bin", "").trimmed();
-                if (!version.isEmpty() && !qtInstallations.contains(version)) {
-                    qtInstallations.insert(version, dir.absolutePath());
-                    qDebug() << "Найдено в реестре:" << version << "=>" << dir.absolutePath();
-                }
-            }
-        }
-        settings.endGroup();
-    }
-}
-
-void QtFolderScanner::scanDefaultPaths() {
-    QStringList defaultPaths = {
-        "C:/Qt",
-        "D:/Qt",
-        "C:/Program Files/Qt",
-        "C:/Program Files (x86)/Qt",
-        QDir::homePath() + "/AppData/Local/Qt"
-    };
-
-    for (const QString &basePath : defaultPaths) {
-        QDir dir(basePath);
-        if (dir.exists()) {
-            scanDirectory(dir.absolutePath());
-        }
-    }
-}
-
-void QtFolderScanner::scanDrives() {
+void QtFolderScanner::scanDrives()
+{
     foreach (const QFileInfo& drive, QDir::drives()) {
         QString drivePath = drive.absoluteFilePath();
+
+        // Нормализуем путь для сравнения
+        drivePath = drivePath.replace("\\", "/");
+
+        // Проверяем исключения
+        if (m_excludedDrivesMap.value(drivePath, true).toBool()) {
+            continue;
+        }
+
         QDir driveDir(drivePath);
         if (!driveDir.exists()) {
             continue;
@@ -182,6 +151,18 @@ QString QtFolderScanner::getWinDeployQtPath(const QString &version, const QStrin
     return QString();
 }
 
+QStringList QtFolderScanner::getDrivesList()
+{
+    QStringList drives;
+    for (const QFileInfo &driveInfo : QDir::drives()) {
+        QString path = driveInfo.absoluteFilePath();
+        // Нормализуем путь для хранения
+        path = path.replace("\\", "/");
+        drives.append(path);
+    }
+    return drives;
+}
+
 void QtFolderScanner::findQtVersionsAllDrives(const QString &qtFolderPath)
 {
     QDir qtDir(qtFolderPath);
@@ -238,4 +219,33 @@ void QtFolderScanner::findCompilerDirs(const QString &versionFolderPath, const Q
             dirMap[version].append(folderPath);
         }
     }
+}
+
+void QtFolderScanner::loadSettings()
+{
+    QSettings settings;
+    QVariantMap savedMap = settings.value("excludedDrives").toMap();
+
+    // Если настроек нет - инициализируем все диски как false
+    if (savedMap.isEmpty()) {
+        QStringList drives = getDrivesList();
+        for (const QString &drive : drives) {
+            savedMap[drive] = false;
+        }
+    }
+
+    // Добавляем новые диски, которых не было в настройках
+    QStringList currentDrives = getDrivesList();
+    for (const QString &drive : currentDrives) {
+        if (!savedMap.contains(drive)) {
+            savedMap[drive] = false;
+        }
+    }
+
+    m_excludedDrivesMap = savedMap;
+}
+
+void QtFolderScanner::saveSettings() const
+{
+    QSettings().setValue("excludedDrives", m_excludedDrivesMap);
 }

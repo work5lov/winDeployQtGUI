@@ -5,10 +5,15 @@
 #include <QObject>
 #include <QMap>
 #include <QStringList>
+#include <qdebug.h>
+#include <qvariant.h>
+#include <QSettings>
+#include <QAbstractItemModel>
 
 class QtFolderScanner : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool isScanning READ isScanning NOTIFY scanningChanged)
+    Q_PROPERTY(QVariantMap excludedDrivesMap READ excludedDrivesMap WRITE setExcludedDrivesMap NOTIFY excludedDrivesMapChanged)
 
 public:
     explicit QtFolderScanner(QObject *parent = nullptr);
@@ -21,26 +26,36 @@ public:
     Q_INVOKABLE const QMap<QString,QVector<QString>>& getDirMap() const; // Возврат сохранённых файлов
     Q_INVOKABLE QStringList getCompilers(const QString &version) const;
     Q_INVOKABLE QString getWinDeployQtPath(const QString &version, const QString &compilerPath) const;
-
-    bool isScanning() const { return m_isScanning; }
+    Q_INVOKABLE QStringList getDrivesList();
     void scanDrives();
-
+    bool isScanning() const { return m_isScanning; }
+    QVariantMap excludedDrivesMap() const { return m_excludedDrivesMap; }
+    void setExcludedDrivesMap(const QVariantMap &map){
+        if (m_excludedDrivesMap != map) {
+            m_excludedDrivesMap = map;
+            emit excludedDrivesMapChanged();
+        }
+        scanSystem();
+        saveSettings();  // Автоматическое сохранение
+    }
 
 signals:
     void scanningChanged();
+    void excludedDrivesMapChanged();
 
 private:
     void findQtVersionsAllDrives(const QString &qtFolderPath);
     void findCompilerFiles(const QString& versionFolderPath, const QString& version);
     void findCompilerDirs(const QString &versionFolderPath, const QString &version);
+    void loadSettings();
+    void saveSettings() const;
 
     bool m_isScanning = false;
     QMap<QString, QString> qtInstallations; // Версия -> путь к bin
     QMap<QString, QString> filesMap; // Карта для хранения файлов
     QMap<QString,QVector<QString>> dirMap;
 
-    void scanRegistry();
-    void scanDefaultPaths();
+    QVariantMap m_excludedDrivesMap;
 
     void scanDirectory(const QString &path);
     bool isValidQtDirectory(const QString &path) const;
