@@ -8,7 +8,7 @@ import Scanner 1.0
 
 ApplicationWindow {
     width: 540
-    height: 250
+    height: 350
     visible: true
 
     minimumWidth: width
@@ -186,7 +186,7 @@ ApplicationWindow {
                 {
                     id: logScrollView
                     width: parent.width
-                    height: 200
+                    height: 100
                     clip: true
 
                     Text

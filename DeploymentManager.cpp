@@ -54,9 +54,9 @@ void DeploymentManager::startDeployment() {
     }
 
     // Добавляем другие необходимые аргументы
-    args << "--no-compiler-runtime"
-         << "--no-angle"
-         << "--no-opengl-sw";
+    // args << "--no-compiler-runtime"
+         // << "--no-angle"
+         // << "--no-opengl-sw";
 
     process.setWorkingDirectory(QFileInfo(executablePath).absolutePath());
     process.setProgram(qtBinPath);
