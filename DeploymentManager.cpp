@@ -46,6 +46,25 @@ void DeploymentManager::startDeployment() {
         return;
     }
 
+    // Создаем среду
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+
+    // Применяем команды из qtenv2.bat
+    for (const QString &command : environmentCommands) {
+        if (command.startsWith("set PATH=")) {
+            QString pathValue = command.mid(9).replace("%PATH%", env.value("PATH"));
+            env.insert("PATH", pathValue);
+        } else if (command.startsWith("set ")) {
+            QStringList parts = command.mid(4).split('=');
+            if (parts.size() == 2) {
+                env.insert(parts[0].trimmed(), parts[1].trimmed());
+            }
+        }
+    }
+
+    // Устанавливаем среду для процесса
+    process.setProcessEnvironment(env);
+
     QStringList args;
     args << executablePath;
 
@@ -83,4 +102,10 @@ void DeploymentManager::startDeployment() {
 void DeploymentManager::setCompilerPath(const QString &path)
 {
     qtBinPath = path;
+}
+
+void DeploymentManager::setEnvironmentCommands(const QStringList &path)
+{
+    environmentCommands = path;
+    // environmentCommands = path.toStringList();
 }

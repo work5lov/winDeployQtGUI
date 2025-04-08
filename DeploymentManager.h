@@ -19,6 +19,7 @@ public:
     Q_INVOKABLE void setQtVersion(const QString &version);
     Q_INVOKABLE void startDeployment();
     Q_INVOKABLE void setCompilerPath(const QString &path);
+    Q_INVOKABLE void setEnvironmentCommands(const QStringList &path);
 
     bool isRunning() const { return process.state() != QProcess::NotRunning; }
 
@@ -30,6 +31,7 @@ signals:
 private:
     QProcess process;
     QString executablePath;
+    QStringList environmentCommands;
     QString qmlDir;
     QString qtBinPath;
 

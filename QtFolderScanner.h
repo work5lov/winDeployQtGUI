@@ -27,6 +27,8 @@ public:
     Q_INVOKABLE QStringList getCompilers(const QString &version) const;
     Q_INVOKABLE QString getWinDeployQtPath(const QString &version, const QString &compilerPath) const;
     Q_INVOKABLE QStringList getDrivesList();
+    Q_INVOKABLE QStringList getEnvironmentCommands(const QString &version, const QString &compilerPath);
+
     void scanDrives();
     bool isScanning() const { return m_isScanning; }
     QVariantMap excludedDrivesMap() const { return m_excludedDrivesMap; }
@@ -44,6 +46,17 @@ signals:
     void excludedDrivesMapChanged();
 
 private:
+
+    struct QtConfig {
+        QString version;
+        QString compilerType; // mingw, llvm-mingw, msvc, android, wasm и т.д.
+        QString qmakePath;
+        QString compilerPath; // Для MinGW/LLVM
+        QStringList environmentCommands; // Новые команды из qtenv2.bat
+    };
+
+    QList<QtConfig> config;
+
     void findQtVersionsAllDrives(const QString &qtFolderPath);
     void findCompilerDirs(const QString &versionFolderPath, const QString &version);
     void loadSettings();

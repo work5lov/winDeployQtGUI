@@ -148,7 +148,15 @@ ApplicationWindow {
 
                             var modifiedString = winDeployPath.split("/").join("\\");
 
+                            console.log(scanner.getEnvironmentCommands(
+                                            qtVersionCombo.currentText,
+                                            compilerPath
+                                        ))
+
                             deployManager.setCompilerPath(modifiedString)
+                            deployManager.setEnvironmentCommands(scanner.getEnvironmentCommands(
+                                                                     qtVersionCombo.currentText,
+                                                                     compilerPath))
                         }
                     }
                 }

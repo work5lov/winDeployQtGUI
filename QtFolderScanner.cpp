@@ -163,6 +163,34 @@ QStringList QtFolderScanner::getDrivesList()
     return drives;
 }
 
+QStringList QtFolderScanner::getEnvironmentCommands(const QString &version, const QString &compilerPath)
+{
+    QString path;
+    for (const QString& item : dirMap.value(version).toList()) {
+        // Разделяем строку на части по символу '/'
+        // QStringList parts = item.split('/');
+
+        // Берем последний элемент после разделения
+        if (item.endsWith(compilerPath)) {
+            path = item;
+        }
+    }
+
+    QDir compilerDir(path);
+    for (QtConfig &cfg : config) {
+        // Нормализуем пути для корректного сравнения
+        QString normalizedConfigPath = QDir::cleanPath(cfg.compilerPath);
+
+        if (cfg.version == version &&
+            normalizedConfigPath == compilerDir.absolutePath())
+        {
+            // qDebug() << cfg.environmentCommands;
+            return cfg.environmentCommands;
+        }
+        else return QStringList();
+    }
+}
+
 void QtFolderScanner::findQtVersionsAllDrives(const QString &qtFolderPath)
 {
     QDir qtDir(qtFolderPath);
@@ -187,12 +215,87 @@ void QtFolderScanner::findCompilerDirs(const QString &versionFolderPath, const Q
 {
     QDir versionDir(versionFolderPath);
     QStringList compilerFolders = versionDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+
     for (const QString& folder : compilerFolders) {
-        if (folder != "Src") {
-            QString folderPath = versionDir.absoluteFilePath(folder);
-            // qDebug() << "Found compiler or additional folder:" << folderPath;
-            dirMap[version].append(folderPath);
+        if (folder == "Src") continue;
+
+        QString folderPath = versionDir.absoluteFilePath(folder);
+        QString qtenvPath = folderPath + "/bin/qtenv2.bat"; // Проверяем в поддиректории bin
+
+        // Если не найден в bin, ищем в корне компилятора
+        if (!QFile::exists(qtenvPath)) {
+            qtenvPath = folderPath + "/qtenv2.bat";
         }
+
+        QString qmakePath = folderPath + "/bin/qmake.exe";
+
+        // Проверяем, что это валидная Qt-сборка
+        if (!QFile::exists(qmakePath)) continue;
+
+        QtConfig cfg;
+
+        cfg.version = version;
+        cfg.qmakePath = qmakePath;
+
+        // Сохраняем команды из qtenv2.bat
+        if (!qtenvPath.isEmpty()) {
+            QFile file(qtenvPath);
+            if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                QTextStream stream(&file);
+                while (!stream.atEnd()) {
+                    QString line = stream.readLine().trimmed();
+                    if (!line.isEmpty() && !line.startsWith("echo") && !line.startsWith("cd"))
+                        cfg.environmentCommands.append(line);
+                }
+                file.close();
+            }
+        }
+
+        // Определяем тип компилятора
+        if (folder.contains("mingw", Qt::CaseInsensitive)) {
+            cfg.compilerType = "mingw";
+            // Ищем путь к MinGW (например, D:/Qt/Tools/mingw810_64/bin)
+            // QDir toolsDir("D:/Qt/Tools"); // Укажите ваш реальный путь к Tools
+            QString mingwFolder = "mingw" + folder.mid(4, 3) + "_64"; // mingw81_64 → mingw810_64
+            cfg.compilerPath = folderPath;
+        }
+        else if (folder.contains("llvm", Qt::CaseInsensitive)) {
+            cfg.compilerType = "llvm-mingw";
+            cfg.compilerPath = folderPath; // Укажите реальный путь
+        }
+        else if (folder.contains("msvc", Qt::CaseInsensitive)) {
+            cfg.compilerType = "msvc";
+            cfg.compilerPath = folderPath; // Для MSVC компилятор встроен в систему
+        }
+        else if (folder.contains("android", Qt::CaseInsensitive)) {
+            cfg.compilerType = "android";
+            cfg.compilerPath = folderPath; // Для MSVC компилятор встроен в систему
+        }
+        else {
+            cfg.compilerType = "unknown";
+        }
+
+        // Добавляем валидную конфигурацию
+        if (!cfg.compilerType.isEmpty()) {
+            // qDebug() << "Found Qt" << version << "with" << cfg.compilerType << "at" << folderPath;
+            // dirMap[version].append(config);
+        }
+
+        dirMap[version].append(folderPath);
+
+        // Выводим полную информацию
+        // qDebug() << "\n*** Найдена конфигурация Qt ***";
+        // qDebug() << "Версия Qt:" << cfg.version;
+        // qDebug() << "Тип компилятора:" << cfg.compilerType;
+        // qDebug() << "Путь к qmake:" << cfg.qmakePath;
+        // qDebug() << "Путь к компилятору:" << cfg.compilerPath;
+        // qDebug() << "Команды окружения из qtenv2.bat:";
+        // for (const QString &cmd : cfg.environmentCommands) {
+        //     qDebug() << "  " << cmd;
+        // }
+        // qDebug() << "*******************************\n";
+
+        config.append(cfg);
     }
 }
 
