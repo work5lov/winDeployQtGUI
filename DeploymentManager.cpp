@@ -2,6 +2,10 @@
 #include "DeploymentManager.h"
 #include <QDebug>
 #include <QDir>
+#include <QFile>
+#include <QTextStream>
+#include <QDateTime>
+#include "Constants.h"
 
 DeploymentManager::DeploymentManager(QObject *parent) : QObject(parent)
 {
@@ -13,8 +17,17 @@ DeploymentManager::DeploymentManager(QObject *parent) : QObject(parent)
         emit outputReceived(QString::fromLocal8Bit(process.readAllStandardError()));
     });
 
-    connect(&process, QOverload<int>::of(&QProcess::finished), this, [this](int exitCode) {
+    connect(&process, &QProcess::finished, this, [this](int exitCode) {
+        timeoutTimer.stop();
         emit deploymentFinished(exitCode == 0);
+        emit isRunningChanged();
+    });
+
+    // Таймаут
+    timeoutTimer.setSingleShot(true);
+    connect(&timeoutTimer, &QTimer::timeout, this, [this]() {
+        emit outputReceived("Ошибка: Превышен таймаут выполнения деплоя!");
+        process.kill();
         emit isRunningChanged();
     });
 }
@@ -54,30 +67,29 @@ void DeploymentManager::startDeployment()
         return;
     }
 
-    // Создаем среду
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
 
-    // Применяем команды из qtenv2.bat
     for (const QString &command : environmentCommands)
     {
-        if (command.startsWith("set PATH=", Qt::CaseInsensitive))
+        if (command.startsWith(Constants::SET_PATH_PREFIX, Qt::CaseInsensitive))
         {
-            QString pathValue = command.mid(9).replace("%PATH%", env.value("PATH"), Qt::CaseInsensitive);
+            QString pathValue = command.mid(Constants::SET_PATH_PREFIX.length())
+                                .replace("%PATH%", env.value("PATH"), Qt::CaseInsensitive);
             env.insert("PATH", pathValue);
         }
-        else if (command.startsWith("set ", Qt::CaseInsensitive))
+        else if (command.startsWith(Constants::SET_PREFIX, Qt::CaseInsensitive))
         {
-            QStringList parts = command.mid(4).split('=', QString::SkipEmptyParts);
+            QStringList parts = command.mid(Constants::SET_PREFIX.length())
+                                .split('=', Qt::SkipEmptyParts);
             if (parts.size() >= 2)
             {
                 QString key = parts.first().trimmed();
-                QString value = parts.mid(1).join("=").trimmed(); // Поддержка значений с '='
+                QString value = parts.mid(1).join("=").trimmed();
                 env.insert(key, value);
             }
         }
     }
 
-    // Устанавливаем среду для процесса
     process.setProcessEnvironment(env);
 
     QStringList args;
@@ -88,50 +100,107 @@ void DeploymentManager::startDeployment()
         args << "--qmldir" << qmlDir;
     }
 
-    // Добавляем другие необходимые аргументы
-    // args << "--no-compiler-runtime"
-         // << "--no-angle"
-         // << "--no-opengl-sw";
-
     process.setWorkingDirectory(QFileInfo(executablePath).absolutePath());
     process.setProgram(qtBinPath);
     process.setArguments(args);
 
-    // Подключение сигнала finished
-    disconnect(&process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-               nullptr, nullptr);
-    connect(&process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
+    disconnect(&process, &QProcess::finished, nullptr, nullptr);
+    connect(&process, &QProcess::finished, this, [this](int exitCode) {
+        timeoutTimer.stop();
         QString message;
-        if (exitStatus == QProcess::NormalExit)
+        if (process.exitStatus() == QProcess::NormalExit)
         {
             message = "Деплой успешно завершен. Код выхода: " + QString::number(exitCode);
         }
         else
         {
-            message = "Деплой завершился с ошибкой. Код выхода: " + QString::number(exitCode);
+            message = "Деплой завершился с ошибкой. Код выхода: " + QString::number(exitCode)
+                      + " (" + process.errorString() + ")";
         }
         emit outputReceived(message);
         emit isRunningChanged();
     });
 
     emit outputReceived("Запуск: " + process.program() + " " + args.join(' '));
+
     process.start();
+    if (!process.waitForStarted(5000))
+    {
+        emit outputReceived("Ошибка: Не удалось запустить процесс! " + process.errorString());
+        emit isRunningChanged();
+        return;
+    }
+
+    timeoutTimer.start(m_timeoutMs);
     emit isRunningChanged();
-    // if (!process.startDetached()) { // Используем startDetached для асинхронного выполнения
-    //     emit outputReceived("Ошибка запуска процесса!");
-    //     emit isRunningChanged();
-    // }
 }
 
-void DeploymentManager::setCompilerPath(const QString &path)
+void DeploymentManager::setWinDeployQtPath(const QString &path)
 {
     qtBinPath = path;
 }
 
-void DeploymentManager::setEnvironmentCommands(const QStringList &path)
+void DeploymentManager::setEnvironmentCommands(const QStringList &commands)
 {
-    environmentCommands = path;
-    qDebug() << environmentCommands;
-    // environmentCommands = path.toStringList();
+    environmentCommands = commands;
+}
+
+void DeploymentManager::saveSettings()
+{
+    QSettings settings;
+    settings.setValue("saved/exePath", executablePath);
+    settings.setValue("saved/qmlDir", qmlDir);
+    settings.setValue("saved/qtVersion", qtVersion);
+    settings.setValue("saved/theme", m_theme);
+}
+
+void DeploymentManager::loadSettings()
+{
+    QSettings settings;
+    m_savedExePath = settings.value("saved/exePath", "").toString();
+    m_savedQmlDir = settings.value("saved/qmlDir", "").toString();
+    m_savedQtVersion = settings.value("saved/qtVersion", "").toString();
+    m_theme = settings.value("saved/theme", "Light").toString();
+    emit themeChanged();
+}
+
+void DeploymentManager::resetAllSettings()
+{
+    QSettings settings;
+    settings.remove("saved");
+
+    m_savedExePath.clear();
+    m_savedQmlDir.clear();
+    m_savedQtVersion.clear();
+    m_theme = "Light";
+    emit themeChanged();
+}
+
+void DeploymentManager::exportLog(const QString &filePath, const QString &logContent)
+{
+    QFile file(filePath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        QTextStream stream(&file);
+        stream << "=== winDeployQtGUI Log ===" << "\n";
+        stream << "Дата: " << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss") << "\n";
+        stream << "==========================\n\n";
+        stream << logContent;
+        file.close();
+        emit outputReceived("Лог сохранён: " + filePath);
+    }
+    else
+    {
+        emit outputReceived("Ошибка: Не удалось сохранить лог в " + filePath);
+    }
+}
+
+void DeploymentManager::setTheme(const QString &theme)
+{
+    if (m_theme != theme)
+    {
+        m_theme = theme;
+        saveSettings();
+        emit themeChanged();
+    }
 }

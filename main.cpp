@@ -1,25 +1,19 @@
+// main.cpp
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <QProcess>
 #include <QSettings>
 #include "DeploymentManager.h"
 #include "QtFolderScanner.h"
+#include "Constants.h"
 
 int main(int argc, char *argv[])
 {
     qRegisterMetaType<QMap<QString, QString>>("QMap<QString, QString>");
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-#endif
     QGuiApplication app(argc, argv);
 
-    // Установите название организации и приложения
-    QCoreApplication::setOrganizationName("OpenSoft");
-    QCoreApplication::setApplicationName("windeployqtGUI");
-
-    // Инициализация QSettings
-    QSettings settings;
+    QCoreApplication::setOrganizationName(Constants::ORG_NAME);
+    QCoreApplication::setApplicationName(Constants::APP_NAME);
 
     QQmlApplicationEngine engine;
     const QUrl url(QStringLiteral("qrc:/main.qml"));

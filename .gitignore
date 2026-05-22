@@ -54,3 +54,5 @@ compile_commands.json
 *_qmlcache.qrc
 
 build/
+.cache/clangd/index/tst_QtFolderScanner.cpp.DBF803BD74D0B99C.idx
+/.cache

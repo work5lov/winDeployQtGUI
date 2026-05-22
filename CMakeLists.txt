@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.21)
 
-project(winDeployQtGUI VERSION 0.1 LANGUAGES CXX)
+project(winDeployQtGUI VERSION 0.2 LANGUAGES CXX)
 
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
@@ -9,50 +9,30 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Quick)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Quick)
+# Целевая версия Qt: 6.8.3+
+find_package(Qt6 REQUIRED COMPONENTS Core Quick)
+
+qt_standard_project_setup()
 
 set(PROJECT_SOURCES
         QtFolderScanner.h QtFolderScanner.cpp
         DeploymentManager.h DeploymentManager.cpp
+        Constants.h
         main.cpp
         qml.qrc
 )
 
-if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(winDeployQtGUI
-        MANUAL_FINALIZATION
-        ${PROJECT_SOURCES}
-    )
-# Define target properties for Android with Qt 6 as:
-#    set_property(TARGET winDeployQtGUI APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
-#                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
-# For more information, see https://doc.qt.io/qt-6/qt-add-executable.html#target-creation
-else()
-    if(ANDROID)
-        add_library(winDeployQtGUI SHARED
-            ${PROJECT_SOURCES}
-        )
-# Define properties for Android with Qt 5 after find_package() calls as:
-#    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
-    else()
-        add_executable(winDeployQtGUI
-          ${PROJECT_SOURCES}          
-        )
-    endif()
-endif()
+qt_add_executable(winDeployQtGUI
+    MANUAL_FINALIZATION
+    ${PROJECT_SOURCES}
+)
 
 target_link_libraries(winDeployQtGUI
-  PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Quick)
+    PRIVATE Qt6::Core Qt6::Quick
+)
 
-# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
-# If you are developing for iOS or macOS you should consider setting an
-# explicit, fixed bundle identifier manually though.
-if(${QT_VERSION} VERSION_LESS 6.1.0)
-  set(BUNDLE_ID_OPTION MACOSX_BUNDLE_GUI_IDENTIFIER com.example.winDeployQtGUI)
-endif()
 set_target_properties(winDeployQtGUI PROPERTIES
-    ${BUNDLE_ID_OPTION}
+    MACOSX_BUNDLE_GUI_IDENTIFIER com.example.winDeployQtGUI
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
@@ -64,7 +44,37 @@ install(TARGETS winDeployQtGUI
     BUNDLE DESTINATION .
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-if(QT_VERSION_MAJOR EQUAL 6)
-    qt_import_qml_plugins(winDeployQtGUI)
-    qt_finalize_executable(winDeployQtGUI)
+qt_import_qml_plugins(winDeployQtGUI)
+qt_finalize_executable(winDeployQtGUI)
+
+# ============================================================
+# CPack — создание инсталлятора (NSIS)
+# ============================================================
+set(CPACK_PACKAGE_NAME "winDeployQtGUI")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_VENDOR "OpenSoft")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "GUI wrapper for windeployqt")
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-windows")
+
+# Генератор: NSIS (Windows) или ZIP (универсальный)
+if(WIN32)
+    set(CPACK_GENERATOR "NSIS")
+    set(CPACK_NSIS_DISPLAY_NAME "winDeployQtGUI")
+    set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+    set(CPACK_NSIS_CREATE_ICONS_EXTRA
+        "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\winDeployQtGUI.lnk' '$INSTDIR\\\\bin\\\\winDeployQtGUI.exe'")
+else()
+    set(CPACK_GENERATOR "ZIP")
+endif()
+
+include(CPack)
+
+# ============================================================
+# Тесты
+# ============================================================
+option(BUILD_TESTS "Build unit tests" ON)
+
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
 endif()
